@@ -1,5 +1,4 @@
 import pandas as pd
-import time
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -83,7 +82,8 @@ def make_plots(organism, organ, gene, datasets):
 
 
 def shani(df, gene):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     plt.figure(figsize=PLOT_SIZE)
     print(gene_df.head())
@@ -94,8 +94,11 @@ def shani(df, gene):
     plt.title(f'Mouse liver hepatocytes zonation - {gene}')
     plt.tight_layout()
     return plt.gcf()
+
+
 def yotams_visium(df, gene):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     plt.figure(figsize=PLOT_SIZE)
     ax = sns.barplot(data=gene_df, x='zone', y='expression', color='blue', edgecolor='black')
@@ -105,11 +108,14 @@ def yotams_visium(df, gene):
     plt.title(f'Human intestine (Visium) - {gene}')
     plt.tight_layout()
     return plt.gcf()
+
+
 def apicome(df, gene, organism):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     print(gene_df)
-    print("empty: ",gene_df.empty)
+    print("empty: ", gene_df.empty)
     plt.figure(figsize=PLOT_SIZE)
     ax = sns.barplot(data=gene_df, x='apicome', y='expression', color='blue', edgecolor='black')
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45, horizontalalignment='right')
@@ -118,8 +124,11 @@ def apicome(df, gene, organism):
     plt.title(f'{organism} apicome - {gene}')
     plt.tight_layout()
     return plt.gcf()
+
+
 def inna(df, gene):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     plt.figure(figsize=PLOT_SIZE)
     ax = sns.barplot(data=gene_df, x='celltype', y='expression', color='blue', edgecolor='black')
@@ -129,8 +138,11 @@ def inna(df, gene):
     plt.title(f'mouse intestines - {gene}')
     plt.tight_layout()
     return plt.gcf()
+
+
 def hpa(df, gene):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     plt.figure(figsize=PLOT_SIZE)
     gene_df = gene_df.sort_values('organ')
@@ -142,8 +154,11 @@ def hpa(df, gene):
     plt.tight_layout()
     plt.legend([], [], frameon=False)
     return plt.gcf()
+
+
 def tabula_muris(df, gene, organ="pancreas"):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     plt.figure(figsize=PLOT_SIZE)
     ax = sns.barplot(data=gene_df, x='celltype', y='expression', color='blue', edgecolor='black')
@@ -153,8 +168,11 @@ def tabula_muris(df, gene, organ="pancreas"):
     plt.title(f'mouse {organ} (Tabula Muris) - {gene}')
     plt.tight_layout()
     return plt.gcf()
+
+
 def tabula_sapiens(df, gene, organ):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     plt.figure(figsize=PLOT_SIZE)
     ax = sns.barplot(data=gene_df, x='celltype', y='expression', color='blue', edgecolor='black')
@@ -164,8 +182,11 @@ def tabula_sapiens(df, gene, organ):
     plt.title(f'human {organ} (Tabula Sapiens) - {gene}')
     plt.tight_layout()
     return plt.gcf()
+
+
 def yotams_sc(df, gene):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     plt.figure(figsize=PLOT_SIZE)
     ax = sns.barplot(data=gene_df, x='celltype', y='expression', color='blue', edgecolor='black')
@@ -175,8 +196,11 @@ def yotams_sc(df, gene):
     plt.title(f'human intestines (single cell) - {gene}')
     plt.tight_layout()
     return plt.gcf()
+
+
 def rachel_zwick(df, gene, organism):
-    if gene not in df['gene'].values: return
+    if gene not in df['gene'].values:
+        return
     gene_df = df[df['gene'] == gene]
     plt.figure(figsize=PLOT_SIZE)
     ax = sns.lineplot(data=gene_df, x="section", y="expression", hue="celltype")
@@ -220,5 +244,3 @@ def rachel_zwick(df, gene, organism):
 # fig = yotams_sc(df, gene)
 
 # fig.show()
-
-
