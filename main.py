@@ -65,7 +65,7 @@ class App:
                                              width=220, height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
         self.switch_theme = ctk.CTkSwitch(master=self.frame_extra, command=self.callback_switch_theme, variable=ctk.StringVar(value="dark"), onvalue="dark", offvalue="",
                                           text="Dark theme", width=280, height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
-        self.button_save = ctk.CTkButton(master=self.frame_plot, command=self.callback_save, text="Save",
+        self.button_save = ctk.CTkButton(master=self.frame_plot, command=self.callback_save, text="Save", state="disabled",
                                          width=520, height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
         self.switch_save = ctk.CTkSwitch(master=self.frame_plot, command=self.callback_switch_save, text="Remember output folder",
                                          width=280, height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
@@ -107,8 +107,11 @@ class App:
         print('options: ', self.optionmenu_organism.get(), self.optionmenu_organ.get(), self.gene)
         print("generated ", len(self.plots), ' plots')
         if not self.plots:
+            self.button_save.configure(state="disabled")
             self.plots = [self.empty_plot]
             self.gene = None
+        else:
+            self.button_save.configure(state="normal")
         self.plot_index = 0
         self.cur_plot = self.plots[self.plot_index]
         self.draw_plot()
@@ -117,6 +120,14 @@ class App:
         self.canvas = FigureCanvasTkAgg(self.cur_plot, master=self.frame_plot)
         self.canvas.draw()
         self.canvas.get_tk_widget().grid(column=1, row=2, columnspan=3, rowspan=5, padx=20, pady=20)
+        if self.plot_index == 0:
+            self.button_previous.configure(state="disabled")
+        else:
+            self.button_previous.configure(state="normal")
+        if self.plot_index == len(self.plots) - 1:
+            self.button_next.configure(state="disabled")
+        else:
+            self.button_next.configure(state="normal")
 
     def callback_generate(self):
         self.gene = self.entry.get().upper().strip()
