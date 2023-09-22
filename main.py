@@ -4,6 +4,8 @@ from tkinter import filedialog as fd
 import plot
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
+import pandas as pd
+from functools import partial
 
 
 PLOT_SIZE = plot.PLOT_SIZE
@@ -22,17 +24,28 @@ class App:
         ctk.set_appearance_mode("dark")
 
         root.title("Roy's plotter")
-        root.iconbitmap("utils/icon.ico")
-        root.protocol("WM_DELETE_WINDOW", self.quit_attempt)
+        root.iconbitmap("icon.ico")
         screen_width = root.winfo_screenwidth()  # Width of the screen
         screen_height = root.winfo_screenheight()  # Height of the screen
         x = (screen_width / 2) - (SIZE[0] / 2)
         y = (screen_height / 2) - (SIZE[1] / 2)
         root.geometry('%dx%d+%d+%d' % (SIZE[0], SIZE[1], x, y))
+
+        root.protocol("WM_DELETE_WINDOW", self.quit_attempt)
+        root.bind_all('<Escape>', lambda event: self.quit_attempt())
+        root.bind_all('<Left>', lambda event: self.callback_previous())
+        root.bind_all('<Right>', lambda event: self.callback_next())
+        root.bind_all('<Up>', lambda event: self.callback_previous())
+        root.bind_all('<Down>', lambda event: self.callback_next())
+        root.bind_all("<Return>", lambda event: self.callback_generate())
+        for i in range(1, 10):
+            root.bind_all(f"{i}", partial(self.callback_numkeys, i))
+
         self.root = root
 
         self.output_dir = None
         self.canvas = None
+        self.names = None
         self.cur_plot = self.create_empty_plot()
         self.plots = [self.cur_plot]
         self.gene = None
@@ -46,11 +59,11 @@ class App:
 
         self.label_organism = ctk.CTkLabel(self.frame_controls, text="Organism: ",
                                            width=TEXT_SIZE[0], height=TEXT_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_LABEL))
-        self.optionmenu_organism = ctk.CTkOptionMenu(master=self.frame_controls, values=["mouse", "human"],
+        self.optionmenu_organism = ctk.CTkOptionMenu(master=self.frame_controls, values=plot.ORGANISMS,
                                                      width=WIDGET_SIZE[0], height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
         self.label_organ = ctk.CTkLabel(self.frame_controls, text="Tissue: ",
                                         width=TEXT_SIZE[0], height=TEXT_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_LABEL))
-        self.optionmenu_organ = ctk.CTkOptionMenu(self.frame_controls, values=["all tissues", "pancreas", "intestine", "liver"],
+        self.optionmenu_organ = ctk.CTkOptionMenu(self.frame_controls, values=plot.TISSUES,
                                                   width=WIDGET_SIZE[0], height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
         self.label_gene = ctk.CTkLabel(self.frame_controls, text="Gene: ",
                                        width=TEXT_SIZE[0], height=TEXT_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_LABEL))
@@ -63,6 +76,8 @@ class App:
                                          width=220, height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
         self.button_previous = ctk.CTkButton(master=self.frame_plot, command=self.callback_previous, text="Previous",
                                              width=220, height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
+        self.optionmenu_plot = ctk.CTkOptionMenu(self.frame_plot, values=["plot"], state="disabled", command=self.callback_options_plots,
+                                                 width=240, height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET), dynamic_resizing=False)
         self.switch_theme = ctk.CTkSwitch(master=self.frame_extra, command=self.callback_switch_theme, variable=ctk.StringVar(value="dark"), onvalue="dark", offvalue="",
                                           text="Dark theme", width=280, height=WIDGET_SIZE[1], font=ctk.CTkFont(family=FONT, size=FONT_SIZE_WIDGET))
         self.button_save = ctk.CTkButton(master=self.frame_plot, command=self.callback_save, text="Save", state="disabled",
@@ -82,6 +97,7 @@ class App:
         self.button_generate.grid(column=1, row=4, padx=20, pady=20)
         self.button_previous.grid(column=1, row=1, padx=20, pady=20)
         self.button_next.grid(column=2, row=1, padx=20, pady=20)
+        self.optionmenu_plot.grid(column=3, row=1, padx=20, pady=20)
         self.switch_theme.grid(column=0, row=7, rowspan=2, padx=20, pady=20)
         self.button_save.grid(column=1, row=7, columnspan=2, padx=5, pady=20)
         self.switch_save.grid(column=3, row=7, padx=20, pady=20)
@@ -103,17 +119,21 @@ class App:
         return fig
 
     def create_plots(self,):
-        self.plots = plot.make_plots(self.optionmenu_organism.get(), self.optionmenu_organ.get(), self.gene, self.datasets)
+        self.plots, self.names = plot.make_plots(self.optionmenu_organism.get(), self.optionmenu_organ.get(), self.gene, self.datasets)
         print('options: ', self.optionmenu_organism.get(), self.optionmenu_organ.get(), self.gene)
         print("generated ", len(self.plots), ' plots')
         if not self.plots:
             self.button_save.configure(state="disabled")
+            self.names = ["plot"]
+            self.optionmenu_plot.configure(state="disabled", values=self.names)
             self.plots = [self.empty_plot]
             self.gene = None
         else:
             self.button_save.configure(state="normal")
+            self.optionmenu_plot.configure(state="normal", values=self.names)
         self.plot_index = 0
         self.cur_plot = self.plots[self.plot_index]
+        self.optionmenu_plot.set(self.names[self.plot_index])
         self.draw_plot()
 
     def draw_plot(self):
@@ -135,11 +155,25 @@ class App:
             return
         self.create_plots()
 
+    def callback_options_plots(self, value):
+        self.plot_index = self.names.index(value)
+        self.cur_plot = self.plots[self.plot_index]
+        self.draw_plot()
+
+    def callback_numkeys(self, key, e):
+        if (key < 1) or (key > len(self.plots)):
+            return
+        self.plot_index = key - 1
+        self.cur_plot = self.plots[self.plot_index]
+        self.optionmenu_plot.set(self.names[self.plot_index])
+        self.draw_plot()
+
     def callback_next(self):
         if self.plot_index >= len(self.plots) - 1:
             return
         self.plot_index += 1
         self.cur_plot = self.plots[self.plot_index]
+        self.optionmenu_plot.set(self.names[self.plot_index])
         self.draw_plot()
 
     def callback_previous(self):
@@ -147,6 +181,7 @@ class App:
             return
         self.plot_index -= 1
         self.cur_plot = self.plots[self.plot_index]
+        self.optionmenu_plot.set(self.names[self.plot_index])
         self.draw_plot()
 
     def callback_save(self):
