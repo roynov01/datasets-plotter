@@ -161,7 +161,11 @@ class App:
         self.draw_plot()
 
     def callback_numkeys(self, key, e):
-        if (key < 1) or (key > len(self.plots)):
+        if not self.names:  # no plots
+            return
+        if str(self.root.focus_get()).endswith("entry"):  # user is typing in the entry
+            return
+        if key > len(self.plots):  # key index is too high
             return
         self.plot_index = key - 1
         self.cur_plot = self.plots[self.plot_index]
