@@ -1,11 +1,7 @@
 # modern-GUI-template
-using custom tkinter
 
-To do:
-
-- [ ] disable "next", "previous", "save" buttons when not needed
-- [ ] convert all data with pivot_wider
-- [ ] Py to EXE
+The app shows plots depending on user input parameters,
+plots can be cycled and updated quickly.
 
 
 ![](Capture.PNG)
