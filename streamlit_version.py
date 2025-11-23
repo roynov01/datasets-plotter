@@ -52,6 +52,15 @@ def build_expr_df(row: pd.Series) -> pd.DataFrame:
     out.columns = ["celltype", "expression"]
     return out
 
+def find_gene_row(df: pd.DataFrame, gene: str):
+    if not gene:
+        return None
+    m = df[df["gene"].str.upper() == gene.upper()]
+    return None if m.empty else m.iloc[0]
+
+def _trigger_compute():
+    st.session_state["trigger_compute"] = True
+    
 # -------------------- Load manifest --------------------
 try:
     manifest = load_manifest(MANIFEST_PATH)
@@ -81,24 +90,23 @@ selected_row = mf_oo[mf_oo["dataset_name"] == sel_dataset_name].iloc[0] if not m
 paper_url = selected_row["paper_url"] if selected_row is not None else None
 ds_path = DATASETS_DIR / selected_row["file"] if selected_row is not None else None
 
-# -------------------- Gene entry + small button (same row) --------------------
+# -------------------- Gene entry + button --------------------
+if "current_gene_input" not in st.session_state:
+    st.session_state["current_gene_input"] = "GAPDH"
 st.markdown("**Enter a gene name**")
 
-with st.form(key="gene_form", clear_on_submit=False):
-    # Make the entry+button row match the dropdown row width visually
-    c_gene, c_btn, c_spacer = st.columns([2.2, 0.5, 0.3])
-
-    with c_gene:
-        default_gene = st.session_state.get("current_gene", "GAPDH")
-        gene_input = st.text_input(
-            "Gene",
-            value=default_gene,
-            label_visibility="collapsed",
-            placeholder="e.g., GAPDH"
-        )
-
-    with c_btn:
-        submitted = st.form_submit_button("Show")  # <-- the ONLY button
+c_gene, c_btn, c_spacer = st.columns([2.2, 0.5, 0.3])
+with c_gene:
+    gene_input = st.text_input(
+        "Gene",
+        label_visibility="collapsed",
+        placeholder="e.g., GAPDH",
+        key="current_gene_input",
+        on_change=_trigger_compute
+    )
+with c_btn:
+    submitted = st.button("Show")
+    submitted = submitted or st.session_state.pop("trigger_compute", False)
 
 
 
@@ -111,54 +119,50 @@ if ds_path is not None:
         st.error(f"Failed to load dataset '{sel_dataset_name}' ({ds_path.name}): {e}")
         st.stop()
 
-# -------------------- React to dataset change: recompute barplot for SAME gene --------------------
+
 dataset_changed = sel_dataset_name != st.session_state.get("dataset_name")
 if dataset_changed:
-    st.session_state["dataset_name"] = sel_dataset_name
-    # keep the same gene if we have one; recompute barplot from the NEW dataset
-    cur_gene = (st.session_state.get("current_gene") or "").strip()
-    if current_df is not None and cur_gene:
-        match = current_df[current_df["gene"].str.upper() == cur_gene.upper()]
-        if match.empty:
-            st.session_state["bar_expr_df"] = None
-            st.session_state["bar_warning"] = f"'{cur_gene}' not found in {sel_dataset_name}."
-        else:
-            st.session_state["bar_expr_df"] = build_expr_df(match.iloc[0])
-            st.session_state["bar_warning"] = None
-    else:
-        # no gene yet; clear so first-load default kicks in
-        st.session_state["bar_expr_df"] = None
-        st.session_state["bar_warning"] = None
+    st.session_state["dataset_name"] = sel_dataset_name  # remember last dataset
 
-# -------------------- Submit from entry/button: recompute barplot --------------------
+# 1) If user submitted, use their input
 if submitted and current_df is not None:
-    g = (gene_input or "").strip()
-    st.session_state["current_gene"] = g
-    match = current_df[current_df["gene"].str.upper() == g.upper()]
-    if match.empty:
+    g = (st.session_state.get("current_gene_input") or "").strip()
+    row = find_gene_row(current_df, g)
+    if row is None:
         st.session_state["bar_expr_df"] = None
         st.session_state["bar_warning"] = f"No data for gene: {g}"
     else:
-        st.session_state["bar_expr_df"] = build_expr_df(match.iloc[0])
+        st.session_state["bar_expr_df"] = build_expr_df(row)
         st.session_state["bar_warning"] = None
 
-# -------------------- First-load default (only if nothing computed yet) --------------------
-if current_df is not None and st.session_state.get("bar_expr_df") is None and st.session_state.get("bar_warning") is None:
-    init_gene = st.session_state.get("current_gene") or "GAPDH"
-    m0 = current_df[current_df["gene"].str.upper() == init_gene.upper()]
-    if m0.empty and not current_df.empty:
-        m0 = current_df.iloc[[0]]
-        st.session_state["current_gene"] = m0["gene"].iloc[0]
-    if not m0.empty:
-        st.session_state["bar_expr_df"] = build_expr_df(m0.iloc[0])
+# 2) Else if dataset changed, recompute using the SAME gene (if any)
+elif dataset_changed and current_df is not None:
+    g = (st.session_state.get("current_gene_input") or "").strip()
+    row = find_gene_row(current_df, g) if g else None
+    if row is None:
+        st.session_state["bar_expr_df"] = None
+        st.session_state["bar_warning"] = f"'{g}' not found in {sel_dataset_name}." if g else None
+    else:
+        st.session_state["bar_expr_df"] = build_expr_df(row)
+        st.session_state["bar_warning"] = None
+
+# 3) Else first-load default
+elif current_df is not None and st.session_state.get("bar_expr_df") is None and st.session_state.get("bar_warning") is None:
+    init_gene = (st.session_state.get("current_gene_input") or "GAPDH").strip()
+    row = find_gene_row(current_df, init_gene)
+    if row is None and not current_df.empty:
+        row = current_df.iloc[0]
+    if row is not None:
+        st.session_state["bar_expr_df"] = build_expr_df(row)
     else:
         st.session_state["bar_warning"] = "No data available in this dataset."
+
 
 # -------------------- Barplot --------------------
 if st.session_state.get("bar_warning"):
     st.warning(st.session_state["bar_warning"])
 elif st.session_state.get("bar_expr_df") is not None:
-    gene_title = (st.session_state.get("current_gene") or "").upper()
+    gene_title = (st.session_state.get("current_gene_input") or "").upper()
     fig_bar = px.bar(st.session_state["bar_expr_df"], x="celltype", y="expression")
     fig_bar.update_layout(
         title=dict(text=gene_title, x=0.5, xanchor="center"),
